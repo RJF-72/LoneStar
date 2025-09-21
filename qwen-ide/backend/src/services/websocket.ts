@@ -1,5 +1,5 @@
-import { Server as WebSocketServer, WebSocket } from 'ws'
-import { ModelService } from './modelService'
+import { WebSocketServer, WebSocket } from 'ws'
+import { ModelService } from './modelService.js'
 import { v4 as uuidv4 } from 'uuid'
 
 interface WebSocketClient {

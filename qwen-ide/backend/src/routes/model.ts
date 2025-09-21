@@ -1,7 +1,92 @@
 import { Router, Request, Response } from 'express'
-import { ModelService } from '../services/modelService'
+import { ModelService } from '../services/modelService.js'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const router = Router()
+
+// List available models
+router.get('/available', (req: Request, res: Response) => {
+  try {
+    const modelsDir = path.resolve(__dirname, '../../../models')
+    
+    if (!fs.existsSync(modelsDir)) {
+      return res.json({
+        success: true,
+        data: []
+      })
+    }
+
+    const files = fs.readdirSync(modelsDir)
+    const models = files
+      .filter(file => file.endsWith('.gguf'))
+      .map(file => {
+        const filePath = path.join(modelsDir, file)
+        const stats = fs.statSync(filePath)
+        return {
+          name: file.replace('.gguf', ''),
+          filename: file,
+          path: `./models/${file}`,
+          size: stats.size,
+          sizeFormatted: `${(stats.size / 1024 / 1024).toFixed(1)}MB`,
+          modified: stats.mtime
+        }
+      })
+
+    res.json({
+      success: true,
+      data: models
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to list available models',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+// Switch to a different model
+router.post('/switch', async (req: Request, res: Response) => {
+  try {
+    const { modelPath, modelName } = req.body
+    
+    if (!modelPath && !modelName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Model path or model name is required'
+      })
+    }
+
+    const modelService = ModelService.getInstance()
+    
+    // If model name provided, convert to path
+    let actualModelPath = modelPath
+    if (modelName && !modelPath) {
+      actualModelPath = `./models/${modelName}.gguf`
+    }
+
+    // Switch to the new model
+    await modelService.initialize(actualModelPath)
+    
+    res.json({
+      success: true,
+      message: 'Model switched successfully',
+      data: modelService.getStatus()
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to switch model',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
 
 // Get model status
 router.get('/status', (req: Request, res: Response) => {

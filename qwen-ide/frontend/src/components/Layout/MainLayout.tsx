@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import MainEditor from '../Editor/MainEditor'
-import ChatPanel from '../Chat/ChatPanel'
+import SimpleChatPanel from '../Chat/SimpleChatPanel'
 import TerminalPanel from '../Terminal/TerminalPanel'
 import SettingsPanel from '../Settings/SettingsPanel'
+import DistributedIntelligencePanel from '../AI/DistributedIntelligencePanel'
+import CodeDIPanel from '../CodeDI/CodeDIPanel'
 import Preview from '../Preview/Preview'
 import { useAppStore } from '../../stores/appStore'
 
@@ -15,31 +16,32 @@ const MainLayout = () => {
     activeFile 
   } = useAppStore()
 
-  const [showPreview, setShowPreview] = useState(false)
-
   // Auto-show preview for certain file types
   const shouldShowPreview = activeFile && (
     activeFile.endsWith('.md') || 
     activeFile.endsWith('.html') || 
-    activeFile.endsWith('.json') ||
-    showPreview
+    activeFile.endsWith('.json')
   )
 
   const renderBottomPanel = () => {
     switch (activePanel) {
       case 'chat':
-        return <ChatPanel />
+        return <SimpleChatPanel />
       case 'terminal':
         return <TerminalPanel />
       case 'settings':
         return <SettingsPanel />
+      case 'ai':
+        return <DistributedIntelligencePanel />
+      case 'codedi':
+        return <CodeDIPanel />
       default:
         return null
     }
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900 text-white">
+    <div className="h-screen flex flex-col bg-black text-yellow-400">
       {/* Header */}
       <Header />
       

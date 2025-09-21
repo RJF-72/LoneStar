@@ -3,17 +3,17 @@ import {
   File, 
   MessageSquare, 
   Terminal, 
-  Settings, 
-  Play, 
-  Save, 
+  Settings,
+  Brain,
+  Package,
   FolderOpen,
   Sun,
   Moon,
-  Monitor,
-  Eye,
-  EyeOff
+  Monitor
 } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
+import ProjectBrowser from '../Project/ProjectBrowser'
+import type { Project } from '../../../../shared/types'
 
 const Header = () => {
   const { 
@@ -22,9 +22,16 @@ const Header = () => {
     activePanel, 
     setActivePanel, 
     currentProject,
+    setCurrentProject,
     modelStatus,
     isModelLoading
   } = useAppStore()
+
+  const [showProjectBrowser, setShowProjectBrowser] = useState(false)
+
+  const handleProjectLoad = (project: Project) => {
+    setCurrentProject(project)
+  }
 
   const getStatusColor = () => {
     switch (modelStatus) {
@@ -60,103 +67,107 @@ const Header = () => {
   }
 
   return (
-    <header className="h-12 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
+    <>
+    <header className="h-12 bg-black border-b-2 border-red-500 flex items-center justify-between px-4">
       {/* Left Side - Logo and Project */}
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-blue-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">★</span>
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-purple-500 border-2 border-yellow-400 rounded-lg flex items-center justify-center">
+            <span className="text-yellow-400 font-bold text-sm">★</span>
           </div>
-          <h1 className="text-lg font-semibold text-white">LoneStar IDE</h1>
-          <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">Qwen3:4B</span>
+          <h1 className="text-lg font-semibold text-yellow-400">LoneStar DI IDE</h1>
+          <span className="text-xs text-yellow-400 bg-black border border-red-500 px-2 py-1 rounded">Distributed Intelligence</span>
         </div>
         
-        {currentProject && (
-          <div className="flex items-center space-x-2 text-gray-300">
-            <FolderOpen size={16} />
-            <span className="text-sm">{currentProject.name}</span>
+        {currentProject ? (
+          <div className="flex items-center space-x-2 text-yellow-400">
+            <button
+              onClick={() => setShowProjectBrowser(true)}
+              className="flex items-center space-x-2 hover:text-orange-400 transition-colors"
+              title="Switch Project"
+            >
+              <FolderOpen size={16} />
+              <span className="text-sm">{currentProject.name}</span>
+            </button>
           </div>
+        ) : (
+          <button
+            onClick={() => setShowProjectBrowser(true)}
+            className="flex items-center space-x-2 text-gray-400 hover:text-yellow-400 border border-red-500 px-3 py-1 rounded transition-colors"
+          >
+            <FolderOpen size={16} />
+            <span className="text-sm">Open Project</span>
+          </button>
         )}
       </div>
 
-      {/* Center - Panel Navigation */}
-      <div className="flex items-center space-x-1 bg-gray-900 rounded-lg p-1">
+      {/* Center - Simplified Panel Navigation */}
+      <div className="flex items-center space-x-1 bg-black border-2 border-red-500 rounded-lg p-1">
         <button
-          onClick={() => setActivePanel('files')}
-          className={`px-3 py-1.5 rounded-md flex items-center space-x-2 text-sm transition-colors ${
-            activePanel === 'files'
-              ? 'bg-qwen-primary text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-700'
+          onClick={() => setActivePanel(activePanel === 'files' ? 'chat' : 'files')}
+          className={`px-4 py-2 rounded-md flex items-center space-x-2 text-sm font-medium transition-colors border-2 ${
+            activePanel === 'files' || activePanel === 'chat'
+              ? 'bg-blue-600 border-blue-400 text-yellow-400'
+              : 'text-yellow-400 hover:text-orange-400 hover:bg-gray-900 border-transparent'
           }`}
+          title="Toggle between Files and AI Chat"
         >
-          <File size={16} />
-          <span>Files</span>
+          {activePanel === 'files' ? <MessageSquare size={16} /> : <File size={16} />}
+          <span>{activePanel === 'files' ? 'AI Chat' : 'Files'}</span>
         </button>
         
         <button
-          onClick={() => setActivePanel('chat')}
-          className={`px-3 py-1.5 rounded-md flex items-center space-x-2 text-sm transition-colors ${
-            activePanel === 'chat'
-              ? 'bg-qwen-primary text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-700'
+          onClick={() => {
+            if (activePanel === 'terminal') {
+              setActivePanel('ai')
+            } else if (activePanel === 'ai') {
+              setActivePanel('codedi')
+            } else {
+              setActivePanel('terminal')
+            }
+          }}
+          className={`px-4 py-2 rounded-md flex items-center space-x-2 text-sm font-medium transition-colors border-2 ${
+            activePanel === 'terminal' || activePanel === 'ai' || activePanel === 'codedi'
+              ? 'bg-purple-600 border-purple-400 text-yellow-400'
+              : 'text-yellow-400 hover:text-purple-400 hover:bg-gray-900 border-transparent'
           }`}
+          title="Cycle through Terminal, AI System, and CodeDI"
         >
-          <MessageSquare size={16} />
-          <span>Chat</span>
+          {activePanel === 'terminal' ? <Brain size={16} /> : 
+           activePanel === 'ai' ? <Package size={16} /> : <Terminal size={16} />}
+          <span>
+            {activePanel === 'terminal' ? 'AI System' : 
+             activePanel === 'ai' ? 'CodeDI' : 'Terminal'}
+          </span>
         </button>
-        
-        <button
-          onClick={() => setActivePanel('terminal')}
-          className={`px-3 py-1.5 rounded-md flex items-center space-x-2 text-sm transition-colors ${
-            activePanel === 'terminal'
-              ? 'bg-qwen-primary text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-700'
-          }`}
-        >
-          <Terminal size={16} />
-          <span>Terminal</span>
-        </button>
-        
+
         <button
           onClick={() => setActivePanel('settings')}
-          className={`px-3 py-1.5 rounded-md flex items-center space-x-2 text-sm transition-colors ${
+          className={`px-4 py-2 rounded-md flex items-center space-x-2 text-sm font-medium transition-colors border-2 ${
             activePanel === 'settings'
-              ? 'bg-qwen-primary text-white'
-              : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              ? 'bg-gray-600 border-gray-400 text-yellow-400'
+              : 'text-yellow-400 hover:text-gray-400 hover:bg-gray-900 border-transparent'
           }`}
+          title="Settings"
         >
           <Settings size={16} />
           <span>Settings</span>
         </button>
       </div>
 
-      {/* Right Side - Actions and Status */}
-      <div className="flex items-center space-x-4">
+      {/* Right Side - Status and Quick Actions */}
+      <div className="flex items-center space-x-3">
         {/* Model Status */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 px-3 py-1 bg-black border border-red-500 rounded-lg">
           <div className={`w-2 h-2 rounded-full ${getStatusColor()} ${isModelLoading ? 'animate-pulse' : ''}`} />
-          <span className="text-xs text-gray-300">{getStatusText()}</span>
+          <span className="text-xs text-yellow-400 font-medium">{getStatusText()}</span>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2">
-          <button
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
-            title="Save File"
-          >
-            <Save size={16} />
-          </button>
-          
-          <button
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
-            title="Run Code"
-          >
-            <Play size={16} />
-          </button>
-          
+        {/* Quick Actions */}
+        <div className="flex items-center space-x-1">
           <button
             onClick={toggleTheme}
-            className="p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-md transition-colors"
+            className="p-2 text-yellow-400 hover:text-orange-400 hover:bg-gray-900 border border-red-500 rounded-md transition-colors"
             title={`Switch to ${theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'} theme`}
           >
             <ThemeIcon />
@@ -164,6 +175,13 @@ const Header = () => {
         </div>
       </div>
     </header>
+
+    <ProjectBrowser 
+      isOpen={showProjectBrowser}
+      onClose={() => setShowProjectBrowser(false)}
+      onProjectLoad={handleProjectLoad}
+    />
+    </>
   )
 }
 

@@ -7,7 +7,7 @@ interface AppState {
   theme: 'light' | 'dark' | 'auto'
   sidebarWidth: number
   panelHeight: number
-  activePanel: 'files' | 'chat' | 'terminal' | 'settings'
+  activePanel: 'files' | 'chat' | 'terminal' | 'settings' | 'ai' | 'codedi'
   
   // Project State
   currentProject: Project | null
@@ -34,7 +34,7 @@ interface AppActions {
   setTheme: (theme: 'light' | 'dark' | 'auto') => void
   setSidebarWidth: (width: number) => void
   setPanelHeight: (height: number) => void
-  setActivePanel: (panel: 'files' | 'chat' | 'terminal' | 'settings') => void
+  setActivePanel: (panel: 'files' | 'chat' | 'terminal' | 'settings' | 'ai' | 'codedi') => void
   
   // Project Actions
   setCurrentProject: (project: Project | null) => void
@@ -44,7 +44,7 @@ interface AppActions {
   
   // Editor Actions
   setActiveFile: (filePath: string | null) => void
-  openFile: (filePath: string) => void
+  openFile: (filePath: string) => Promise<void>
   closeFile: (filePath: string) => void
   updateFileContent: (filePath: string, content: string) => void
   
@@ -128,10 +128,30 @@ export const useAppStore = create<AppState & AppActions>()(
       
       // Editor Actions
       setActiveFile: (activeFile) => set({ activeFile }),
-      openFile: (filePath) => set((state) => ({
-        openFiles: state.openFiles.includes(filePath) ? state.openFiles : [...state.openFiles, filePath],
-        activeFile: filePath
-      })),
+      openFile: async (filePath) => {
+        set((state) => ({
+          openFiles: state.openFiles.includes(filePath) ? state.openFiles : [...state.openFiles, filePath],
+          activeFile: filePath
+        }))
+        
+        // Load file content if not already loaded
+        const state = get()
+        if (!state.fileContents[filePath]) {
+          try {
+            const response = await fetch(`/api/files/${encodeURIComponent(filePath)}`)
+            if (response.ok) {
+              const result = await response.json()
+              if (result.success) {
+                set((state) => ({
+                  fileContents: { ...state.fileContents, [filePath]: result.data.content }
+                }))
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load file content:', error)
+          }
+        }
+      },
       closeFile: (filePath) => set((state) => {
         const newOpenFiles = state.openFiles.filter(f => f !== filePath)
         return {

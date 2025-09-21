@@ -1,6 +1,12 @@
 import { LlamaModel, LlamaContext, LlamaChatSession } from 'node-llama-cpp'
 import { EventEmitter } from 'events'
 import path from 'path'
+import fs from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export interface ModelConfig {
   temperature: number
@@ -50,21 +56,29 @@ export class ModelService extends EventEmitter {
       this.status = { status: 'connecting' }
       this.emit('statusChange', this.status)
 
-      // Use provided path or try to find Qwen model
-      const modelFilePath = modelPath || 
-        process.env.QWEN_MODEL_PATH || 
-        this.findQwenModel()
+      // Use provided path or environment variable
+      const modelFilePath = modelPath || process.env.QWEN_MODEL_PATH
 
       if (!modelFilePath) {
-        throw new Error('No Qwen model found. Please provide a model path.')
+        throw new Error('No Qwen model path provided. Please set QWEN_MODEL_PATH in .env file or provide modelPath parameter.')
       }
 
-      console.log(`Loading Qwen model from: ${modelFilePath}`)
+      // Resolve absolute path
+      const absolutePath = path.isAbsolute(modelFilePath) 
+        ? modelFilePath 
+        : path.resolve(__dirname, '../../..', modelFilePath)
 
-      // Load model
+      console.log(`🤖 Loading Qwen3:4B model from: ${absolutePath}`)
+
+      // Check if file exists
+      if (!fs.existsSync(absolutePath)) {
+        throw new Error(`Model file not found: ${absolutePath}`)
+      }
+
+      // Load model with optimized settings for Qwen3:4B
       this.model = new LlamaModel({
-        modelPath: modelFilePath,
-        gpuLayers: 32, // Adjust based on your GPU
+        modelPath: absolutePath,
+        gpuLayers: 32, // Adjust based on your GPU capability
       })
 
       // Create context
@@ -116,20 +130,42 @@ export class ModelService extends EventEmitter {
     return null
   }
 
-  async generateResponse(prompt: string, config?: Partial<ModelConfig>): Promise<string> {
+  async generateResponse(prompt: string, options?: {
+    temperature?: number
+    maxTokens?: number
+    topP?: number
+    topK?: number
+    conversationHistory?: any[]
+  }): Promise<string> {
     if (!this.chatSession) {
       throw new Error('Model not initialized. Call initialize() first.')
     }
 
-    const finalConfig = { ...this.config, ...config }
+    const config = {
+      temperature: options?.temperature ?? this.config.temperature,
+      maxTokens: options?.maxTokens ?? this.config.maxTokens,
+      topP: options?.topP ?? this.config.topP,
+      topK: options?.topK ?? this.config.topK,
+    }
 
     try {
-      const response = await this.chatSession.prompt(prompt, {
-        temperature: finalConfig.temperature,
-        maxTokens: finalConfig.maxTokens,
-        topP: finalConfig.topP,
-        topK: finalConfig.topK,
-        repeatPenalty: finalConfig.repeatPenalty,
+      // Build context-aware prompt
+      let contextualPrompt = prompt
+      
+      if (options?.conversationHistory && options.conversationHistory.length > 0) {
+        const historyContext = options.conversationHistory
+          .slice(-5) // Last 5 messages for context
+          .map((msg: any) => `${msg.role}: ${msg.content}`)
+          .join('\n')
+        
+        contextualPrompt = `Previous conversation:\n${historyContext}\n\nCurrent question: ${prompt}`
+      }
+
+      const response = await this.chatSession.prompt(contextualPrompt, {
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+        topP: config.topP,
+        topK: config.topK,
       })
 
       return response
@@ -141,34 +177,54 @@ export class ModelService extends EventEmitter {
 
   async generateStreamResponse(
     prompt: string, 
-    config?: Partial<ModelConfig>,
+    options?: {
+      temperature?: number
+      maxTokens?: number
+      topP?: number
+      topK?: number
+      conversationHistory?: any[]
+    },
     onToken?: (token: string) => void
   ): Promise<string> {
     if (!this.chatSession) {
       throw new Error('Model not initialized. Call initialize() first.')
     }
 
-    const finalConfig = { ...this.config, ...config }
+    const config = {
+      temperature: options?.temperature ?? this.config.temperature,
+      maxTokens: options?.maxTokens ?? this.config.maxTokens,
+      topP: options?.topP ?? this.config.topP,
+      topK: options?.topK ?? this.config.topK,
+    }
+
     let fullResponse = ''
 
     try {
-      const stream = this.chatSession.promptWithMeta(prompt, {
-        temperature: finalConfig.temperature,
-        maxTokens: finalConfig.maxTokens,
-        topP: finalConfig.topP,
-        topK: finalConfig.topK,
-        repeatPenalty: finalConfig.repeatPenalty,
-        onToken: (chunk) => {
-          const token = chunk.token
-          fullResponse += token
-          if (onToken) {
-            onToken(token)
-          }
-        }
+      // Build context-aware prompt
+      let contextualPrompt = prompt
+      
+      if (options?.conversationHistory && options.conversationHistory.length > 0) {
+        const historyContext = options.conversationHistory
+          .slice(-5) // Last 5 messages for context
+          .map((msg: any) => `${msg.role}: ${msg.content}`)
+          .join('\n')
+        
+        contextualPrompt = `Previous conversation:\n${historyContext}\n\nCurrent question: ${prompt}`
+      }
+
+      const response = await this.chatSession.prompt(contextualPrompt, {
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+        topP: config.topP,
+        topK: config.topK,
       })
 
-      await stream.result
-      return fullResponse
+      // For now, return the full response (streaming can be added later with WebSocket)
+      if (onToken) {
+        onToken(response)
+      }
+
+      return response
     } catch (error) {
       console.error('Error generating stream response:', error)
       throw new Error(`Failed to generate stream response: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -201,11 +257,11 @@ export class ModelService extends EventEmitter {
         this.chatSession = null
       }
       if (this.context) {
-        this.context.dispose()
+        // Note: LlamaContext disposal is handled automatically by node-llama-cpp
         this.context = null
       }
       if (this.model) {
-        this.model.dispose()
+        // Note: LlamaModel disposal is handled automatically by node-llama-cpp  
         this.model = null
       }
       

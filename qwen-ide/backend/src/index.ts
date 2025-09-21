@@ -3,14 +3,14 @@ import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
 import { createServer } from 'http'
-import { Server } from 'ws'
-import { config } from 'dotenv'
-import apiRoutes from './routes/api'
-import { setupWebSocket } from './services/websocket'
-import { ModelService } from './services/modelService'
+import { WebSocketServer } from 'ws'
+import dotenv from 'dotenv'
+import apiRoutes from './routes/api.js'
+import { setupWebSocket } from './services/websocket.js'
+import { ModelService } from './services/modelService.js'
 
 // Load environment variables
-config()
+dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 8000
@@ -44,7 +44,7 @@ app.get('/health', (req, res) => {
 const server = createServer(app)
 
 // Setup WebSocket server
-const wss = new Server({ server, path: '/ws' })
+const wss = new WebSocketServer({ server, path: '/ws' })
 setupWebSocket(wss)
 
 // Error handling middleware
@@ -68,7 +68,7 @@ app.use('*', (req, res) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`🚀 LoneStar IDE Backend running on http://localhost:${PORT}`)
+  console.log(`🚀 LoneStar DI IDE Backend running on http://localhost:${PORT}`)
   console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`)
   
   // Initialize model service

@@ -1,7 +1,7 @@
 {
-  "name": "lonestar-ide-frontend",
+  "name": "lonestar-di-ide-frontend",
   "version": "1.0.0",
-  "description": "Frontend application for LoneStar IDE",
+  "description": "Revolutionary Distributed Intelligence Frontend for LoneStar DI IDE",
   "type": "module",
   "scripts": {
     "dev": "vite",

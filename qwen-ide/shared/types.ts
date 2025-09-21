@@ -44,14 +44,24 @@ export interface ProjectFile {
   children?: ProjectFile[];
 }
 
+export interface FileSystemItem {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  lastModified: Date;
+  children?: FileSystemItem[];
+}
+
 export interface Project {
   id: string;
   name: string;
   path: string;
+  type?: string;
   description?: string;
-  files: ProjectFile[];
+  files: FileSystemItem[];
   createdAt: Date;
-  updatedAt: Date;
+  lastOpened: Date;
   settings: ProjectSettings;
 }
 
