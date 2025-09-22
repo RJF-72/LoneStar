@@ -78,8 +78,8 @@ class FiberOpticPipeline extends EventEmitter {
       lastActivity: new Date()
     }
     
-    // Initialize high-performance thread pool (50 threads, hidden from users)
-    this.threadPool = new HighPerformanceThreadPool(this.id, 50)
+    // Initialize high-performance thread pool (2 threads for testing, hidden from users)
+    this.threadPool = new HighPerformanceThreadPool(this.id, 2)
     
     // Listen to thread pool events (but don't expose complexity to users)
     this.threadPool.on('taskCompleted', () => {

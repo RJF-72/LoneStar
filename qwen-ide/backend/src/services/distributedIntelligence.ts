@@ -143,6 +143,11 @@ export class DistributedIntelligenceSystem extends EventEmitter {
     this.emit('system:initialized', this.getSystemStats())
   }
 
+  // Public getter for initialization status
+  public getInitializationStatus(): boolean {
+    return this.isInitialized
+  }
+
   // Wait for main model to be ready
   private async waitForMainModel(): Promise<void> {
     return new Promise((resolve) => {
@@ -286,7 +291,7 @@ export class DistributedIntelligenceSystem extends EventEmitter {
         // Create nanobot swarm for each thread in the pipeline
         for (const thread of pipeline.threads) {
           const swarmId = `${pipeline.id}-${thread.id}-swarm`
-          const nanobotSwarm = new NanobotSwarm(pipeline.id, thread.id, 12000) // 12,000 nanobots per swarm
+          const nanobotSwarm = new NanobotSwarm(pipeline.id, thread.id, 10) // 10 nanobots per swarm for testing
           
           // Listen to swarm events
           nanobotSwarm.on('swarmMetricsUpdate', (metrics) => {
@@ -338,17 +343,37 @@ export class DistributedIntelligenceSystem extends EventEmitter {
         }
       }
 
-      // Process through fiber optic pipeline system
+      // Process through fiber optic pipeline system (kept for parallel analytics/metrics)
       const pipelineId = await this.fiberOpticSystem.processData(pipelineData)
       
-      // Get enhanced results from traditional agent system as well
+      // Default enhanced result via nanobots (kept for analysis/optimization)
       const agent = this.findBestAgent(task.type)
-      let enhancedResult = null
-      
+      let enhancedResult: any = null
       if (agent) {
         const pipeline = this.findBestPipeline(agent)
         if (pipeline) {
           enhancedResult = await this.distributeToNanobots(pipeline, task, agent.intelligence)
+        }
+      }
+
+      // For real code generation, use the loaded LLM when available (no mocks)
+      if (task.type === 'generate') {
+        const status = this.mainModel.getStatus()
+        if (status.status === 'connected') {
+          try {
+            const desc = (task.data && (task.data.description || task.data.prompt)) || ''
+            const ctx = task.context || ''
+            const prompt = `${desc}\n\n${ctx}`.trim()
+            const llmText = await this.mainModel.generateResponse(prompt, {
+              temperature: 0.7,
+              maxTokens: 512,
+              topP: 0.9,
+              topK: 50,
+            })
+            enhancedResult = llmText
+          } catch (e) {
+            console.warn('LLM generation failed, falling back to pipeline output:', e)
+          }
         }
       }
 

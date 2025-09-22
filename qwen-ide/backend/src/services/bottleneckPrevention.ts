@@ -445,7 +445,7 @@ export class BottleneckPreventionEngine extends EventEmitter {
     systemMetrics: SystemMetrics
     bottlenecks: BottleneckMetrics[]
     strategies: PreventionStrategy[]
-    thresholds: typeof this.thresholds
+    thresholds: any
   } {
     return {
       isRunning: this.isRunning,

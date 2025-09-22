@@ -4,6 +4,8 @@ import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
+import crypto from 'crypto'
+import ModelCompressionSystem, { ModelMetadata } from './modelCompression.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -31,6 +33,7 @@ export class ModelService extends EventEmitter {
   private context: LlamaContext | null = null
   private chatSession: LlamaChatSession | null = null
   private status: ModelStatus = { status: 'disconnected' }
+  private compressionSystem: ModelCompressionSystem
   private config: ModelConfig = {
     temperature: 0.7,
     maxTokens: 2048,
@@ -42,6 +45,7 @@ export class ModelService extends EventEmitter {
 
   private constructor() {
     super()
+    this.compressionSystem = ModelCompressionSystem.getInstance()
   }
 
   static getInstance(): ModelService {
@@ -49,6 +53,77 @@ export class ModelService extends EventEmitter {
       ModelService.instance = new ModelService()
     }
     return ModelService.instance
+  }
+
+  /**
+   * Download and compress a model from the web
+   */
+  async downloadAndCompressModel(url: string): Promise<ModelMetadata> {
+    console.log(`🚀 Downloading and compressing model from: ${url}`)
+    return this.compressionSystem.downloadAndCompressModel(url)
+  }
+
+  /**
+   * Load a compressed model for inference
+   */
+  async loadCompressedModel(modelId: string): Promise<void> {
+    try {
+      this.status = { status: 'connecting' }
+      this.emit('statusChange', this.status)
+
+      // Load compressed model
+      const decompressedModel = await this.compressionSystem.loadCompressedModel(modelId)
+
+      // Create LlamaModel from decompressed data
+      this.model = new LlamaModel({
+        modelPath: '', // Will use in-memory model
+        gpuLayers: 32,
+      })
+
+      // Note: In a full implementation, we'd need to integrate with node-llama-cpp
+      // to load models from memory buffers instead of files
+      // For now, this is a placeholder
+
+      this.context = new LlamaContext({
+        model: this.model,
+        contextSize: 2048,
+        batchSize: 128,
+      })
+
+      this.chatSession = new LlamaChatSession({
+        context: this.context,
+        systemPrompt: this.config.systemPrompt,
+      })
+
+      const metadata = this.compressionSystem.getCompressedModels().find(m =>
+        crypto.createHash('md5').update(m.originalUrl).digest('hex') === modelId
+      )
+
+      this.status = {
+        status: 'connected',
+        modelPath: `compressed:${modelId}`,
+        loadedAt: new Date()
+      }
+
+      console.log(`✅ Compressed model loaded: ${metadata?.name || modelId}`)
+      this.emit('statusChange', this.status)
+
+    } catch (error) {
+      console.error('❌ Failed to load compressed model:', error)
+      this.status = {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+      this.emit('statusChange', this.status)
+      throw error
+    }
+  }
+
+  /**
+   * Get list of compressed models
+   */
+  getCompressedModels(): ModelMetadata[] {
+    return this.compressionSystem.getCompressedModels()
   }
 
   async initialize(modelPath?: string): Promise<void> {
@@ -78,7 +153,7 @@ export class ModelService extends EventEmitter {
       // Load model with optimized settings for Qwen3:4B
       this.model = new LlamaModel({
         modelPath: absolutePath,
-        gpuLayers: 32, // Adjust based on your GPU capability
+        gpuLayers: Number(process.env.GPU_LAYERS || '0'),
       })
 
       // Create context

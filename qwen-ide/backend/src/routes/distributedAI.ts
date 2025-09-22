@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import distributedIntelligence from '../services/distributedIntelligence.js'
+import { ModelService } from '../services/modelService.js'
 
 const router = Router()
 
@@ -101,17 +102,35 @@ router.post('/generate', async (req: Request, res: Response) => {
     }
     
     const generationContext = `Language: ${language || 'auto-detect'}\nFramework: ${framework || 'none'}\nContext: ${context || 'General code generation'}`
-    const result = await distributedIntelligence.generateCode(description, generationContext)
-    
+
+    // Ensure the main model is connected for real generation
+    const modelService = ModelService.getInstance()
+    const status = modelService.getStatus()
+    if (status.status !== 'connected') {
+      return res.status(503).json({
+        success: false,
+        error: 'Model not connected',
+        hint: 'POST /api/model/initialize with { modelPath } or set QWEN_MODEL_PATH and restart'
+      })
+    }
+
+    // Build a concise prompt for code generation
+    const prompt = [
+      'You are Qwen Coder. Generate code based on the request.',
+      `Description: ${description}`,
+      generationContext,
+      'Return only code unless comments are requested.'
+    ].join('\n')
+
+    // Run DI pipeline for metrics, but return real model output
+    const diResult = await distributedIntelligence.generateCode(description, generationContext)
+    const generatedText = await modelService.generateResponse(prompt, { maxTokens: 1024 })
+
     return res.json({
       success: true,
       data: {
-        generated: result,
-        processingInfo: {
-          systemUsed: 'Distributed Intelligence System',
-          agentType: 'Generator',
-          nanobots: 'Multiple nanobots used for parallel generation'
-        }
+        generatedText,
+        di: { processingInfo: diResult, note: 'DI pipeline executed for metrics; text is from the model' }
       },
       message: 'Code generation completed successfully'
     })

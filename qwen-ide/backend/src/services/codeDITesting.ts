@@ -1,6 +1,6 @@
-import CodeDIEngine from './codeDI'
-import { DistributedIntelligenceSystem } from './distributedIntelligence'
-import BottleneckPreventionEngine from './bottleneckPrevention'
+import CodeDIEngine from './codeDI.js'
+import { DistributedIntelligenceSystem } from './distributedIntelligence.js'
+import BottleneckPreventionEngine from './bottleneckPrevention.js'
 import { performance } from 'perf_hooks'
 
 // CodeDI System Testing Suite - Validate the revolutionary compression system
@@ -113,7 +113,7 @@ export class CodeDISystemTester {
       // Test 10: System stability under load
       await this.testSystemStability()
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error during testing:', error)
       this.recordTestResult('SYSTEM_ERROR', false, 0, 0, 0, 0, 0, 0, { error: error.message })
     }
@@ -200,7 +200,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Basic Compression', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -278,7 +278,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Large Model Compression', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -345,7 +345,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Compressed Execution', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -416,7 +416,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Memory Efficiency', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -430,7 +430,7 @@ export class CodeDISystemTester {
     
     try {
       // Initialize distributed system if not already done
-      if (!this.distributedSystem.isInitialized) {
+      if (!this.distributedSystem.getInitializationStatus()) {
         await this.distributedSystem.initialize()
       }
       
@@ -493,7 +493,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Distributed Integration', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -522,7 +522,7 @@ export class CodeDISystemTester {
       
       // Process all tasks concurrently to test nanobot swarm capability
       const concurrentPromises = swarmTasks.map(task => 
-        this.distributedSystem.processTask(task).catch(error => ({ error: error.message, task: task.id }))
+        this.distributedSystem.processTask(task).catch((error: any) => ({ error: error.message, task: task.id }))
       )
       
       const results = await Promise.all(concurrentPromises)
@@ -557,7 +557,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Nanobot Swarm Performance', false, duration, memoryBefore, memoryBefore, 0, 1, 0, { error: error.message })
     }
@@ -590,7 +590,7 @@ export class CodeDISystemTester {
       // Process intensive tasks
       const intensiveResults = await Promise.all(
         intensiveTasks.map(task => 
-          this.distributedSystem.processTask(task).catch(error => ({ error: error.message }))
+          this.distributedSystem.processTask(task).catch((error: any) => ({ error: error.message }))
         )
       )
       
@@ -633,7 +633,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Bottleneck Prevention', false, duration, memoryBefore, memoryBefore, 0, 1, 0, { error: error.message })
     }
@@ -735,7 +735,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Real-World AI Model', false, duration, memoryBefore, memoryBefore, 0, 0, 0, { error: error.message })
     }
@@ -759,7 +759,7 @@ export class CodeDISystemTester {
       // Compress all models concurrently
       const compressionPromises = concurrentModels.map(model => 
         this.codeDI.compress(model, `concurrent-${model.id}`, 'concurrent_test')
-          .catch(error => ({ error: error.message, modelId: model.id }))
+          .catch((error: any) => ({ error: error.message, modelId: model.id }))
       )
       
       const compressionResults = await Promise.all(compressionPromises)
@@ -769,7 +769,7 @@ export class CodeDISystemTester {
         .filter(result => result && !result.error && result.containerId)
         .map(result => 
           this.codeDI.decompress(result.containerId)
-            .catch(error => ({ error: error.message, containerId: result.containerId }))
+            .catch((error: any) => ({ error: error.message, containerId: result.containerId }))
         )
       
       const decompressionResults = await Promise.all(decompressionPromises)
@@ -803,7 +803,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('Concurrent Operations', false, duration, memoryBefore, memoryBefore, 0, 1, 0, { error: error.message })
     }
@@ -899,7 +899,7 @@ export class CodeDISystemTester {
         }
       )
       
-    } catch (error) {
+    } catch (error: any) {
       const duration = performance.now() - startTime
       this.recordTestResult('System Stability', false, duration, memoryBefore, memoryBefore, 0, 1, 0, { error: error.message })
     }
