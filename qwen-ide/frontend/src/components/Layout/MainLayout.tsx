@@ -7,6 +7,8 @@ import TerminalPanel from '../Terminal/TerminalPanel'
 import SettingsPanel from '../Settings/SettingsPanel'
 import DistributedIntelligencePanel from '../AI/DistributedIntelligencePanel'
 import CodeDIPanel from '../CodeDI/CodeDIPanel'
+import ZipManager from '../Archive/ZipManager'
+import InstallerWizard from '../Archive/InstallerWizard'
 import Preview from '../Preview/Preview'
 import { useAppStore } from '../../stores/appStore'
 

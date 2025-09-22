@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Folder, FolderOpen, Home, RefreshCw } from 'lucide-react'
+import { X, Folder, FolderOpen, Home, RefreshCw, ArrowUp, HardDrive } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import type { FileSystemItem, Project } from '../../../../shared/types'
 
@@ -37,7 +37,19 @@ const ProjectBrowser = ({ isOpen, onClose, onProjectLoad }: ProjectBrowserProps)
       const result = await response.json()
       
       if (result.success) {
-        setDirectories(result.data)
+        // If no path provided and we get empty results, provide fallback directories
+        if (!path && (!result.data || result.data.length === 0)) {
+          // Fallback to common directories
+          const fallbackDirs = [
+            { name: 'Workspaces', path: '/workspaces', isDirectory: true, size: 0, lastModified: new Date() },
+            { name: 'Root (/)', path: '/', isDirectory: true, size: 0, lastModified: new Date() },
+            { name: 'Home', path: '/home', isDirectory: true, size: 0, lastModified: new Date() },
+            { name: 'User Home (~)', path: process.env.HOME || '/home/vscode', isDirectory: true, size: 0, lastModified: new Date() }
+          ]
+          setDirectories(fallbackDirs)
+        } else {
+          setDirectories(result.data || [])
+        }
         setCurrentPath(path || '')
       } else {
         setError(result.error || 'Failed to load directories')
@@ -132,12 +144,29 @@ const ProjectBrowser = ({ isOpen, onClose, onProjectLoad }: ProjectBrowserProps)
             >
               <Home size={16} />
             </button>
+            <button
+              onClick={() => loadDirectories('/workspaces')}
+              className="px-3 py-1 text-sm text-yellow-400 hover:text-orange-400 border border-red-500 rounded transition-colors"
+              title="Go to Workspaces"
+            >
+              <HardDrive size={14} className="inline mr-1" />
+              Workspaces
+            </button>
+            <button
+              onClick={() => loadDirectories('/')}
+              className="px-3 py-1 text-sm text-yellow-400 hover:text-orange-400 border border-red-500 rounded transition-colors"
+              title="Go to Root"
+            >
+              Root
+            </button>
             {currentPath && (
               <button
                 onClick={goToParentDirectory}
                 className="px-3 py-1 text-sm text-yellow-400 hover:text-orange-400 border border-red-500 rounded transition-colors"
+                title="Go Up"
               >
-                ← Back
+                <ArrowUp size={14} className="inline mr-1" />
+                Back
               </button>
             )}
             <span className="text-sm text-gray-300 font-mono">

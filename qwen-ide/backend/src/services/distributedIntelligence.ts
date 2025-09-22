@@ -1,5 +1,7 @@
 import { EventEmitter } from 'events'
-import { ModelService } from './modelService'
+import { ModelService } from './modelService.js'
+import FiberOpticPipelineSystem, { PipelineData, FiberOpticMetrics } from './fiberOpticPipelines.js'
+import NanobotSwarm from './nanobotSwarm.js'
 
 // Types for the distributed system
 interface FiberOpticThread {
@@ -17,6 +19,11 @@ interface Nanobot {
   status: 'active' | 'idle' | 'processing'
   memoryUsage: number
   efficiency: number
+}
+
+interface NanobotSwarmData {
+  swarm: NanobotSwarm
+  metrics: any
 }
 
 interface Pipeline {
@@ -54,7 +61,9 @@ interface Task {
 export class DistributedIntelligenceSystem extends EventEmitter {
   private static instance: DistributedIntelligenceSystem
   private mainModel: ModelService
+  private fiberOpticSystem!: FiberOpticPipelineSystem
   private agents: Map<string, Agent> = new Map()
+  private nanobotSwarms: Map<string, NanobotSwarmData> = new Map()
   private taskQueue: Task[] = []
   private isInitialized: boolean = false
   private performanceMetrics = {
@@ -63,7 +72,8 @@ export class DistributedIntelligenceSystem extends EventEmitter {
     averageResponseTime: 0,
     systemLoad: 0,
     memoryUsage: 0,
-    bottleneckCount: 0
+    bottleneckCount: 0,
+    fiberOpticMetrics: null as FiberOpticMetrics | null
   }
 
   static getInstance(): DistributedIntelligenceSystem {
@@ -76,6 +86,28 @@ export class DistributedIntelligenceSystem extends EventEmitter {
   constructor() {
     super()
     this.mainModel = ModelService.getInstance()
+    this.fiberOpticSystem = new FiberOpticPipelineSystem()
+    
+    // Listen to fiber optic system events
+    this.fiberOpticSystem.on('pipelineProcessed', (data) => {
+      this.emit('pipelineProcessed', data)
+    })
+    
+    this.fiberOpticSystem.on('systemOverload', (metrics) => {
+      console.warn('⚠️ Fiber optic system overload detected:', metrics)
+      this.emit('systemOverload', metrics)
+    })
+    
+    this.fiberOpticSystem.on('bottlenecksDetected', (bottlenecks) => {
+      console.warn('🚫 Bottlenecks detected:', bottlenecks)
+      this.performanceMetrics.bottleneckCount = bottlenecks.length
+      this.emit('bottlenecksDetected', bottlenecks)
+    })
+    
+    this.fiberOpticSystem.on('metricsUpdate', (metrics) => {
+      this.performanceMetrics.fiberOpticMetrics = metrics
+      this.performanceMetrics.systemLoad = metrics.systemLoad
+    })
   }
 
   // Initialize the entire distributed system
@@ -247,30 +279,36 @@ export class DistributedIntelligenceSystem extends EventEmitter {
 
   // Spawn nanobots (12,000+ per pipeline)
   private async spawnNanobots(): Promise<void> {
-    console.log('🔬 Spawning nanobot swarms...')
+    console.log('🔬 Spawning nanobot swarms (12,000+ per pipeline)...')
     
     for (const agent of this.agents.values()) {
       for (const pipeline of agent.pipelines) {
-        const nanobotsPerThread = Math.ceil(12000 / pipeline.threads.length)
-        
+        // Create nanobot swarm for each thread in the pipeline
         for (const thread of pipeline.threads) {
-          for (let i = 0; i < nanobotsPerThread; i++) {
-            const nanobot: Nanobot = {
-              id: `nanobot-${thread.id}-${i}`,
-              threadId: thread.id,
-              task: null,
-              status: 'idle',
-              memoryUsage: Math.random() * 0.1, // Start with minimal memory
-              efficiency: 0.95 + Math.random() * 0.05 // High efficiency
-            }
-            
-            pipeline.nanobots.push(nanobot)
-          }
+          const swarmId = `${pipeline.id}-${thread.id}-swarm`
+          const nanobotSwarm = new NanobotSwarm(pipeline.id, thread.id, 12000) // 12,000 nanobots per swarm
+          
+          // Listen to swarm events
+          nanobotSwarm.on('swarmMetricsUpdate', (metrics) => {
+            this.emit('nanobotMetricsUpdate', { swarmId, metrics })
+          })
+          
+          nanobotSwarm.on('nanobotTaskComplete', (data) => {
+            this.emit('nanobotTaskComplete', { swarmId, ...data })
+          })
+          
+          // Store the swarm
+          this.nanobotSwarms.set(swarmId, {
+            swarm: nanobotSwarm,
+            metrics: nanobotSwarm.getMetrics()
+          })
+          
+          console.log(`   ✓ Spawned nanobot swarm: ${swarmId} (12,000 nanobots)`)
         }
-        
-        console.log(`   ✓ Spawned ${pipeline.nanobots.length} nanobots in ${pipeline.id}`)
       }
     }
+    
+    console.log(`🤖 Total nanobots spawned: ${this.getTotalNanobots().toLocaleString()}`)
   }
 
   // Process a task through the distributed system
@@ -283,24 +321,48 @@ export class DistributedIntelligenceSystem extends EventEmitter {
     const startTime = Date.now()
 
     try {
-      // Find the best agent for this task type
+      // Create pipeline data from task
+      const pipelineData: PipelineData = {
+        id: task.id,
+        type: this.mapTaskTypeToPipelineType(task.type),
+        payload: {
+          context: task.context,
+          data: task.data,
+          priority: task.priority
+        },
+        priority: this.mapPriorityToNumber(task.priority),
+        timestamp: task.createdAt,
+        metadata: {
+          sourceAgent: 'system',
+          complexity: this.calculateTaskComplexity(task)
+        }
+      }
+
+      // Process through fiber optic pipeline system
+      const pipelineId = await this.fiberOpticSystem.processData(pipelineData)
+      
+      // Get enhanced results from traditional agent system as well
       const agent = this.findBestAgent(task.type)
-      if (!agent) {
-        throw new Error(`No agent available for task type: ${task.type}`)
+      let enhancedResult = null
+      
+      if (agent) {
+        const pipeline = this.findBestPipeline(agent)
+        if (pipeline) {
+          enhancedResult = await this.distributeToNanobots(pipeline, task, agent.intelligence)
+        }
       }
-
-      // Find the least loaded pipeline
-      const pipeline = this.findBestPipeline(agent)
-      if (!pipeline) {
-        throw new Error(`No pipeline available in agent: ${agent.id}`)
-      }
-
-      // Distribute task to nanobots
-      const result = await this.distributeToNanobots(pipeline, task, agent.intelligence)
 
       // Update performance metrics
       const responseTime = Date.now() - startTime
       this.updatePerformanceMetrics(responseTime, true)
+      
+      const result = {
+        pipelineId,
+        fiberOpticProcessed: true,
+        enhancedResult,
+        processingTime: responseTime,
+        systemMetrics: this.fiberOpticSystem.getMetrics()
+      }
       
       this.emit('task:completed', { task, result, responseTime })
       return result
@@ -312,6 +374,42 @@ export class DistributedIntelligenceSystem extends EventEmitter {
       this.emit('task:failed', { task, error, responseTime })
       throw error
     }
+  }
+
+  // Helper methods for fiber optic integration
+  private mapTaskTypeToPipelineType(taskType: string): 'analysis' | 'generation' | 'optimization' {
+    const mapping = {
+      'analyze': 'analysis' as const,
+      'generate': 'generation' as const,
+      'optimize': 'optimization' as const
+    }
+    return mapping[taskType as keyof typeof mapping] || 'analysis'
+  }
+
+  private mapPriorityToNumber(priority: string): number {
+    const mapping = {
+      'low': 1,
+      'medium': 5,
+      'high': 8,
+      'critical': 10
+    }
+    return mapping[priority as keyof typeof mapping] || 5
+  }
+
+  private calculateTaskComplexity(task: Task): number {
+    // Simple complexity calculation based on data size and type
+    const dataSize = JSON.stringify(task.data).length
+    const contextSize = task.context.length
+    const baseComplexity = Math.min(10, Math.floor((dataSize + contextSize) / 100))
+    
+    // Adjust based on task type
+    const typeMultiplier = {
+      'analyze': 1.2,
+      'generate': 1.5,
+      'optimize': 1.8
+    }
+    
+    return Math.floor(baseComplexity * (typeMultiplier[task.type as keyof typeof typeMultiplier] || 1))
   }
 
   // Find the best agent for a task type
@@ -367,33 +465,64 @@ export class DistributedIntelligenceSystem extends EventEmitter {
     return bestPipeline
   }
 
-  // Distribute task to nanobots
+  // Distribute task to nanobots using the nanobot swarm system
   private async distributeToNanobots(pipeline: Pipeline, task: Task, intelligence: any): Promise<any> {
-    // Find idle nanobots
-    const idleNanobots = pipeline.nanobots.filter(n => n.status === 'idle')
+    // Find the best nanobot swarm for this pipeline
+    const swarmId = this.findBestSwarmForPipeline(pipeline.id)
     
-    if (idleNanobots.length === 0) {
-      // All nanobots busy, add to queue or wait
-      await this.waitForIdleNanobots(pipeline)
-      return this.distributeToNanobots(pipeline, task, intelligence)
+    if (!swarmId) {
+      console.warn('⚠️ No nanobot swarm found for pipeline:', pipeline.id)
+      return null
     }
-
-    // Use multiple nanobots for parallel processing
-    const nanobotsToUse = Math.min(idleNanobots.length, 10) // Use up to 10 nanobots
-    const selectedNanobots = idleNanobots.slice(0, nanobotsToUse)
-
-    // Break down task into micro-tasks
-    const microTasks = this.breakdownTask(task, nanobotsToUse)
     
-    // Process micro-tasks in parallel
-    const promises = selectedNanobots.map((nanobot, index) => 
-      this.executeNanobotTask(nanobot, microTasks[index], intelligence)
-    )
-
-    const results = await Promise.all(promises)
+    const swarmData = this.nanobotSwarms.get(swarmId)
+    if (!swarmData) {
+      console.warn('⚠️ Nanobot swarm data not found:', swarmId)
+      return null
+    }
     
-    // Combine results
-    return this.combineResults(results, task)
+    try {
+      // Execute task using the nanobot swarm (incredible parallel processing!)
+      const result = await swarmData.swarm.executeTask({
+        id: task.id,
+        data: task.data,
+        context: task.context,
+        type: task.type,
+        priority: task.priority,
+        intelligence: intelligence
+      })
+      
+      console.log(`🤖 Task processed by nanobot swarm: ${swarmId}`)
+      return result
+      
+    } catch (error) {
+      console.error('❌ Error in nanobot swarm processing:', error)
+      throw error
+    }
+  }
+  
+  // Find the best nanobot swarm for a pipeline
+  private findBestSwarmForPipeline(pipelineId: string): string | null {
+    // Look for swarms associated with this pipeline
+    for (const [swarmId, swarmData] of this.nanobotSwarms.entries()) {
+      if (swarmId.includes(pipelineId)) {
+        const metrics = swarmData.swarm.getMetrics()
+        
+        // Prefer swarms with high idle nanobots and good efficiency
+        if (metrics.idleNanobots > 100 && metrics.averageEfficiency > 0.8) {
+          return swarmId
+        }
+      }
+    }
+    
+    // Fallback: return first available swarm for this pipeline
+    for (const [swarmId] of this.nanobotSwarms.entries()) {
+      if (swarmId.includes(pipelineId)) {
+        return swarmId
+      }
+    }
+    
+    return null
   }
 
   // Wait for idle nanobots
@@ -574,14 +703,59 @@ export class DistributedIntelligenceSystem extends EventEmitter {
 
   // Get system statistics
   getSystemStats() {
+    const fiberOpticMetrics = this.fiberOpticSystem.getMetrics()
+    
     return {
       agents: this.agents.size,
       pipelines: this.getTotalPipelines(),
       threads: this.getTotalThreads(),
       nanobots: this.getTotalNanobots(),
-      performance: this.performanceMetrics,
+      performance: {
+        ...this.performanceMetrics,
+        fiberOpticMetrics
+      },
+      fiberOpticSystem: {
+        totalThroughput: fiberOpticMetrics.totalThroughput,
+        averageLatency: fiberOpticMetrics.averageLatency,
+        systemLoad: fiberOpticMetrics.systemLoad,
+        bottlenecks: fiberOpticMetrics.bottlenecks,
+        recommendations: fiberOpticMetrics.recommendations,
+        pipelineCount: 9, // 3 per agent
+        pipelineDistribution: fiberOpticMetrics.pipelineDistribution
+      },
       timestamp: new Date()
     }
+  }
+
+  // Get detailed fiber optic metrics
+  getFiberOpticMetrics(): FiberOpticMetrics {
+    return this.fiberOpticSystem.getMetrics()
+  }
+
+  // Shutdown the entire system
+  async shutdown(): Promise<void> {
+    console.log('🔌 Shutting down Distributed Intelligence System...')
+    
+    // Shutdown all nanobot swarms
+    console.log('🤖 Shutting down nanobot swarms...')
+    const swarmShutdowns = Array.from(this.nanobotSwarms.values()).map(swarmData => 
+      swarmData.swarm.shutdown()
+    )
+    await Promise.all(swarmShutdowns)
+    this.nanobotSwarms.clear()
+    
+    // Shutdown fiber optic system (including all thread pools)
+    if (this.fiberOpticSystem) {
+      await this.fiberOpticSystem.shutdown()
+    }
+    
+    // Clear agents and tasks
+    this.agents.clear()
+    this.taskQueue = []
+    this.isInitialized = false
+    
+    this.removeAllListeners()
+    console.log('✅ Distributed Intelligence System shut down successfully')
   }
 
   private getTotalPipelines(): number {
@@ -595,9 +769,9 @@ export class DistributedIntelligenceSystem extends EventEmitter {
   }
 
   private getTotalNanobots(): number {
-    return Array.from(this.agents.values()).reduce((total, agent) => 
-      total + agent.pipelines.reduce((pTotal, pipeline) => pTotal + pipeline.nanobots.length, 0), 0
-    )
+    return Array.from(this.nanobotSwarms.values()).reduce((total, swarmData) => {
+      return total + swarmData.swarm.getMetrics().totalNanobots
+    }, 0)
   }
 
   // Public API methods

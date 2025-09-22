@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import projectService from '../services/projectService'
+import projectService from '../services/projectService.js'
 
 const router = Router()
 

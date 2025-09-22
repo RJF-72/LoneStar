@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus } from 'lucide-react'
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Archive, Wrench } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import ProjectBrowser from '../Project/ProjectBrowser'
+import ZipManager from '../Archive/ZipManager'
+import InstallerWizard from '../Archive/InstallerWizard'
 import type { Project } from '../../../../shared/types'
 
 const Sidebar = () => {
   const { currentProject, openFile, activeFile, setCurrentProject } = useAppStore()
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [showProjectBrowser, setShowProjectBrowser] = useState(false)
+  const [showZipManager, setShowZipManager] = useState(false)
+  const [showInstallerWizard, setShowInstallerWizard] = useState(false)
 
   const toggleDirectory = (path: string) => {
     setExpandedDirs(prev => {
@@ -82,13 +86,29 @@ const Sidebar = () => {
                 <Folder size={16} className="text-orange-400 flex-shrink-0" />
                 <span className="text-sm font-medium text-yellow-400 truncate">{currentProject.name}</span>
               </div>
-              <button
-                onClick={() => setShowProjectBrowser(true)}
-                className="p-1 text-yellow-400 hover:text-orange-400 border border-red-500 rounded transition-colors flex-shrink-0"
-                title="Switch Project"
-              >
-                <FolderOpen size={14} />
-              </button>
+              <div className="flex items-center space-x-1 flex-shrink-0">
+                <button
+                  onClick={() => setShowZipManager(true)}
+                  className="p-1 text-yellow-400 hover:text-orange-400 border border-orange-500 rounded transition-colors"
+                  title="Archive Manager"
+                >
+                  <Archive size={12} />
+                </button>
+                <button
+                  onClick={() => setShowInstallerWizard(true)}
+                  className="p-1 text-yellow-400 hover:text-purple-400 border border-purple-500 rounded transition-colors"
+                  title="Installer Wizard"
+                >
+                  <Wrench size={12} />
+                </button>
+                <button
+                  onClick={() => setShowProjectBrowser(true)}
+                  className="p-1 text-yellow-400 hover:text-orange-400 border border-red-500 rounded transition-colors"
+                  title="Switch Project"
+                >
+                  <FolderOpen size={12} />
+                </button>
+              </div>
             </div>
           ) : (
             <button 
@@ -121,6 +141,18 @@ const Sidebar = () => {
         isOpen={showProjectBrowser}
         onClose={() => setShowProjectBrowser(false)}
         onProjectLoad={handleProjectLoad}
+      />
+      
+      <ZipManager
+        isOpen={showZipManager}
+        onClose={() => setShowZipManager(false)}
+        currentProject={currentProject}
+      />
+      
+      <InstallerWizard
+        isOpen={showInstallerWizard}
+        onClose={() => setShowInstallerWizard(false)}
+        currentProject={currentProject}
       />
     </>
   )

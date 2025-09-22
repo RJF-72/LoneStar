@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import crypto from 'crypto'
-import { Project, FileSystemItem } from '../../../shared/types'
+import { Project, FileSystemItem } from '../types'
 
 interface CloudProject {
   id: string

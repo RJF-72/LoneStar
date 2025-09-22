@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
-import cloudSyncService from '../services/cloudSyncService'
-import projectService from '../services/projectService'
+import cloudSyncService from '../services/cloudSyncService.js'
+import projectService from '../services/projectService.js'
 
 const router = Router()
 

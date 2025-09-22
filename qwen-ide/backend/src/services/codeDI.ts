@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import * as os from 'os'
 import { ModelService } from './modelService.js'
 
 /**
@@ -42,7 +43,7 @@ interface CodeDIMetrics {
 
 class CodeDIEngine extends EventEmitter {
   private containers: Map<string, CodeDIContainer> = new Map()
-  private compressionWorkers: Worker[] = []
+  private compressionWorkers: any[] = [] // Node.js worker_threads
   private virtualMemoryPool: ArrayBuffer
   private memoryAllocator: Map<string, number> = new Map()
   private isInitialized: boolean = false
@@ -73,11 +74,11 @@ class CodeDIEngine extends EventEmitter {
   }
 
   private async initializeCompressionWorkers(): Promise<void> {
-    // Initialize web workers for parallel compression/decompression
-    const workerCount = Math.min(navigator.hardwareConcurrency || 4, 8)
+    // Initialize compression workers for parallel processing
+    const workerCount = Math.min(os.cpus().length || 4, 8)
     console.log(`🔧 Initializing ${workerCount} compression workers...`)
     
-    // In a real implementation, these would be actual web workers
+    // In a real implementation, these would be actual worker threads
     // For now, we'll simulate the worker pool
     this.compressionWorkers = Array(workerCount).fill(null).map((_, index) => ({
       id: index,
@@ -309,7 +310,7 @@ class CodeDIEngine extends EventEmitter {
     await new Promise(resolve => setTimeout(resolve, 100))
     const serialized = JSON.stringify(data)
     const compressed = new TextEncoder().encode(serialized)
-    return compressed.buffer
+    return compressed.buffer as ArrayBuffer
   }
 
   private async simulateDecompression(data: ArrayBuffer): Promise<any> {

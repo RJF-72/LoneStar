@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { Project, FileSystemItem } from '../../../shared/types'
+import { Project, FileSystemItem } from '../types'
 
 export class ProjectService {
   private static instance: ProjectService
